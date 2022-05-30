@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './App.module.css';
 
 import Searchbar from 'components/Searchbar';
@@ -9,93 +9,97 @@ import Loader from 'shared/components/Loader';
 
 import { getImages } from 'shared/services/images';
 
-class App extends Component {
-  state = {
-    q: "",
+const App = () => {
+  const [state, setState] = useState({
     items: [],
     loading: false,
     error: null,
-    page: 1,
+  });
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
+  const [modal, setModal] = useState({
     isModalOpen: false,
     modalData: '',
-  }
+  });
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { q, page } = this.state;
-    if (q !== prevState.q || page > prevState.page) {
-      this.setState({
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (!q) {
+        return
+      };
+      setState(prevState => ({
+        ...prevState,
         loading: true,
         error: null,
-      });
+      }));
 
       try {
         const items = await getImages(q, page)
-        this.setState(prevState => {
+        setState(prevState => {
           return {
+            ...prevState,
             items: [...prevState.items, ...items],
             loading: false,
           }
         })
       } catch (error) {
-        this.setState({
+        setState(prevState => ({
+          ...prevState,
           loading: false,
           error: error.message,
-        });
+        }));
       }
     }
-  }
+    fetchImages()
+  }, [q, page])
 
-  setSearch = ({q}) => {
-    this.setState({
-      q,
-      items: [],
-      page: 1,
+  const setSearch = ({ q }) => {
+    setQ(q);
+    setPage(1);
+    setState({
+    ...state,
+    items: [],
     })
   }
 
-  loadMore = () => {
-    this.setState(({ page }) => {
-      return {
-        page: page + 1,
-      }
-    })
-  }
+  const loadMore = () => {
+    setPage(prevPage => prevPage + 1)
+  };
   
-  showModal = modalData => {
-    this.setState({
+  const showModal = (modalData) => {
+    setModal({
       isModalOpen: true,
       modalData,
     });
   };
 
-  closeModal = () => {
-    this.setState({
+  const closeModal = () => {
+    setModal({
       isModalOpen: false,
     });
   };
 
-  render() {
-    const { loading, items, isModalOpen, modalData } = this.state;
-    const { setSearch, loadMore, showModal, closeModal} = this;
-    return (
-      <div className={styles.App}>
+  const { loading, items } = state;
+  const { isModalOpen, modalData } = modal;
+  return (
+    <div className={styles.App}>
         
-        <Searchbar onSubmit={setSearch} />
-        {Boolean(items.length) &&
-          <ImageGallery items={items} onClick={showModal}/>
-        }
-        {loading && <Loader/>}
-        {!loading && Boolean(items.length) && (
-          <Button text='Load more' loadMore={loadMore}></Button>
-        )}
-        {isModalOpen && (
-          <Modal close={closeModal}>
-            <img src={modalData} alt="Nothing to see here" />
-          </Modal>
-        )}
-      </div>
-    );
-  }
-};
+      <Searchbar onSubmit={setSearch} />
+      {Boolean(items.length) &&
+        <ImageGallery items={items} onClick={showModal} />
+      }
+      {loading && <Loader />}
+      {!loading && Boolean(items.length) && (
+        <Button text='Load more' loadMore={loadMore}></Button>
+      )}
+      {isModalOpen && (
+        <Modal close={closeModal}>
+          <img src={modalData} alt="Nothing to see here" />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 
 export default App
